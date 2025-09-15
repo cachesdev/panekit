@@ -44,6 +44,8 @@
 		portalId?: string;
 		dragModifier?: DragModifier;
 		constrainTo?: HTMLElementOrSelector;
+		canDrag?: boolean;
+		canResize?: boolean;
 		constrainToPortal?: boolean;
 	};
 
@@ -56,6 +58,8 @@
 		dragModifier,
 		constrainToPortal = false,
 		constrainTo,
+		canDrag = true,
+		canResize = true,
 		class: className,
 		...restProps
 	}: Props = $props();
@@ -175,18 +179,19 @@
 	data-pane-id={thisPane?.id}
 	style={`width: ${size.width}px; height: ${size.height}px;`}
 	{@attach portal({ target: portalTargetRef })}
-	{@attach draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
-	{@attach resize({
-		minWidth: size.width,
-		minHeight: size.height,
-		position: elementPosition,
-		onResizeEnd: () => {
-			recomputeDraggableZones();
-		},
-		onPositionChange(pos) {
-			elementPosition = pos;
-		}
-	})}
+	{@attach canDrag && draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
+	{@attach canResize &&
+		resize({
+			minWidth: size.width,
+			minHeight: size.height,
+			position: elementPosition,
+			onResizeEnd: () => {
+				recomputeDraggableZones();
+			},
+			onPositionChange(pos) {
+				elementPosition = pos;
+			}
+		})}
 	onmousedown={() => {
 		wm.focusPane(thisPane?.id ?? '');
 		ref?.focus();
