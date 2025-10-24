@@ -1,5 +1,11 @@
 # panekit
 
+## 0.10.0
+
+### Minor Changes
+
+- 927fe6f: switch css from mandatory to optional
+
 ## 0.9.0
 
 ### Minor Changes
