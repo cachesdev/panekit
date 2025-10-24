@@ -1,5 +1,11 @@
 # panekit
 
+## 0.8.0
+
+### Minor Changes
+
+- 2117aac: Add canDrag and canResize props to pane
+
 ## 0.7.0
 
 ### Minor Changes
