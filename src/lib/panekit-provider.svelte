@@ -14,13 +14,5 @@
 	setPaneManagerContext(wm);
 </script>
 
-<svelte:document
-	onmousedown={(e) => {
-		if (!(e.target instanceof Element) || !e.target.closest('[data-pane]')) {
-			wm.blurAll();
-		}
-	}}
-/>
-
 {@render children?.()}
 <PanePortalTarget />

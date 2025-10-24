@@ -35,6 +35,7 @@
 	import { resize } from '$lib/resize.svelte.js';
 	import { onMount, tick, untrack } from 'svelte';
 	import { portal } from '$lib/portal.svelte';
+	import { onClickOutside } from 'runed';
 
 	type HTMLElementOrSelector = HTMLElement | string;
 
@@ -92,6 +93,11 @@
 			wm.addPane(() => thisPane!);
 			handleRef = ref.querySelector('[data-pane-handle]');
 			contentRef = ref.querySelector('[data-pane-content]');
+
+			onClickOutside(
+				() => ref,
+				() => thisPane.blur()
+			);
 
 			// hack so that the portalTarget attachment runs first.
 			tick().then(() => (portalTargetRef = findPortalTarget(ref!, portalId)));

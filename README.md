@@ -89,8 +89,10 @@ The main pane container. Panes are draggable and resizable by default.
 - `paneId?: string` - Custom ID for the pane. Auto-generated if not provided
 - `portalId?: string` - Target a specific portal by ID
 - `dragModifier?: DragModifier` - Override the global drag modifier for this pane
-- `constrainToPortal?: boolean` - Constrains the pane to the portal bounds
+- `constrainToPortal?: boolean` - Constrains the pane to the portal bounds. Default: `false`
 - `constrainTo?: HTMLElementOrSelector` - Constrains the pane to a given element or selector
+- `canDrag?: boolean` - Allows for disabling drag functionality. Default: `true`
+- `canResize?: boolean` - Allows for disabling resize functionality. Default: `true`
 - Standard HTML div attributes
 
 **Behavior:**
