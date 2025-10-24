@@ -28,9 +28,7 @@
 		"!dist/**/*.test.*",
 		"!dist/**/*.spec.*",
 		"!dist/assets/**",
-		"!dist/index.css",
 		"src/lib",
-		"!src/lib/index.css",
 		"!src/lib/assets/**",
 		"!src/lib/**/*.test.*",
 		"!src/lib/**/*.spec.*"
