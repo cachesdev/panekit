@@ -37,6 +37,8 @@ First, wrap your application with the `PanekitProvider`. This creates the contex
 ```svelte
 <script>
   import { PanekitProvider } from 'panekit';
+  // CSS is optional, but recommended
+  import "panekit/index.css"
 </script>
 
 <PanekitProvider>
