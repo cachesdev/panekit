@@ -1,5 +1,11 @@
 # panekit
 
+## 0.9.0
+
+### Minor Changes
+
+- e90a88b: Add missing CSS back
+
 ## 0.8.0
 
 ### Minor Changes
