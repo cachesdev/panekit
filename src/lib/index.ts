@@ -1,5 +1,3 @@
-import './index.css';
-
 import * as Pane from './window/index.js';
 export { Pane };
 export * from './window/index.js';
