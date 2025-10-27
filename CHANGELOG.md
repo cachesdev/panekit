@@ -1,5 +1,11 @@
 # panekit
 
+## 0.11.0
+
+### Minor Changes
+
+- 552401d: Remove mobile check which makes the window unresizable on firefox
+
 ## 0.10.0
 
 ### Minor Changes
