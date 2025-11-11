@@ -13,6 +13,7 @@ interface ResizeOptions {
 	handleOffset?: MaybeGetter<number>;
 	invisibleHandles?: MaybeGetter<boolean>;
 	onResizeStart?: () => void;
+	onResize?: (size: { width: number; height: number }) => void;
 	onResizeEnd?: () => void;
 	onPositionChange?: (pos: { x: number; y: number }) => void;
 	position?: { x: number; y: number };
@@ -138,7 +139,7 @@ function calculatePositionAdjustment(
 
 function resize(options: ResizeOptions = {}): Attachment<HTMLElement> {
 	return (element) => {
-		const { onResizeStart, onResizeEnd, onPositionChange } = options;
+		const { onResizeStart, onResize, onResizeEnd, onPositionChange } = options;
 		const position = options.position;
 
 		let isResizing = false;
@@ -268,6 +269,9 @@ function resize(options: ResizeOptions = {}): Attachment<HTMLElement> {
 
 			element.style.setProperty('width', constrainedWidth + 'px');
 			element.style.setProperty('height', constrainedHeight + 'px');
+
+			// Notify parent of size change
+			onResize?.({ width: constrainedWidth, height: constrainedHeight });
 
 			if (currentHandle.includes('w') || currentHandle.includes('n')) {
 				const { x, y } = calculatePositionAdjustment(

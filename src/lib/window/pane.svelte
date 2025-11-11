@@ -33,7 +33,7 @@
 	import type { ControlsPluginData } from '../types.js';
 	import { type WithChildren, type WithElementRef, type HTMLDivAttributes, cn } from '../utils.js';
 	import { resize } from '$lib/resize.svelte.js';
-	import { onMount, tick, untrack } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { portal } from '$lib/portal.svelte';
 	import { onClickOutside } from 'runed';
 
@@ -53,7 +53,7 @@
 	let {
 		ref = $bindable(null),
 		children,
-		size = { width: 200, height: 200 },
+		size = $bindable({ width: 200, height: 200 }),
 		paneId,
 		portalId,
 		dragModifier,
@@ -78,8 +78,8 @@
 	let centerPos = $derived.by(() => {
 		if (portalTargetRef) {
 			return {
-				x: (portalTargetRef.clientWidth - untrack(() => size.width)) / 2,
-				y: (portalTargetRef.clientHeight - untrack(() => size.height)) / 2
+				x: (portalTargetRef.clientWidth - size.width) / 2,
+				y: (portalTargetRef.clientHeight - size.height) / 2
 			};
 		}
 	});
@@ -161,6 +161,19 @@
 			data.block_zones = block_zones;
 		}
 	}
+
+	// React to external size changes
+	$effect(() => {
+		if (ref && ready) {
+			ref.style.width = `${size.width}px`;
+			ref.style.height = `${size.height}px`;
+
+			// Recompute draggable zones when size changes
+			tick().then(() => {
+				recomputeDraggableZones();
+			});
+		}
+	});
 </script>
 
 <svelte:window
@@ -183,7 +196,6 @@
 	tabindex="-1"
 	data-pane=""
 	data-pane-id={thisPane?.id}
-	style={`width: ${size.width}px; height: ${size.height}px;`}
 	{@attach portal({ target: portalTargetRef })}
 	{@attach canDrag && draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
 	{@attach canResize &&
@@ -193,6 +205,9 @@
 			position: elementPosition,
 			onResizeEnd: () => {
 				recomputeDraggableZones();
+			},
+			onResize: (newSize) => {
+				size = newSize;
 			},
 			onPositionChange(pos) {
 				elementPosition = pos;
