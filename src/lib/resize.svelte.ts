@@ -139,6 +139,14 @@ function calculatePositionAdjustment(
 
 function resize(options: ResizeOptions = {}): Attachment<HTMLElement> {
 	return (element) => {
+<<<<<<< Updated upstream
+=======
+		const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+		if (isMobile) {
+			return () => {};
+		}
+
+>>>>>>> Stashed changes
 		const { onResizeStart, onResize, onResizeEnd, onPositionChange } = options;
 		const position = options.position;
 
