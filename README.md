@@ -87,13 +87,14 @@ The main pane container. Panes are draggable and resizable by default.
 
 **Props:**
 
-- `size?: { width: number; height: number }` - Initial size of the pane. Default: `{ width: 200, height: 200 }`
+- `size?: { width: number; height: number }` - (Bindable) size of the pane. Default: `{ width: 200, height: 200 }`
 - `paneId?: string` - Custom ID for the pane. Auto-generated if not provided
 - `portalId?: string` - Target a specific portal by ID
 - `dragModifier?: DragModifier` - Override the global drag modifier for this pane
 - `constrainToPortal?: boolean` - Constrains the pane to the portal bounds. Default: `false`
 - `constrainTo?: HTMLElementOrSelector` - Constrains the pane to a given element or selector
 - `canDrag?: boolean` - Allows for disabling drag functionality. Default: `true`
+- `maximised?: boolean` - (Bindable) tracks maximised state. Default: `true`
 - `canResize?: boolean` - Allows for disabling resize functionality. Default: `true`
 - Standard HTML div attributes
 

@@ -35,7 +35,7 @@
 	import { resize } from '$lib/resize.svelte.js';
 	import { onMount, tick } from 'svelte';
 	import { portal } from '$lib/portal.svelte';
-	import { onClickOutside } from 'runed';
+	import { ElementSize, onClickOutside } from 'runed';
 
 	type HTMLElementOrSelector = HTMLElement | string;
 
@@ -45,6 +45,7 @@
 		portalId?: string;
 		dragModifier?: DragModifier;
 		constrainTo?: HTMLElementOrSelector;
+		maximised?: boolean;
 		canDrag?: boolean;
 		canResize?: boolean;
 		constrainToPortal?: boolean;
@@ -59,6 +60,7 @@
 		dragModifier,
 		constrainToPortal = false,
 		constrainTo,
+		maximised = $bindable(false),
 		canDrag = true,
 		canResize = true,
 		class: className,
@@ -73,6 +75,7 @@
 	let ready = $state(false);
 	let modifierHeld = $state(false);
 	let isDragging = $state(false);
+	let portalSize = new ElementSize(() => portalTargetRef);
 
 	// calculate center the position based on the portal
 	let centerPos = $derived.by(() => {
@@ -100,10 +103,23 @@
 			);
 
 			// hack so that the portalTarget attachment runs first.
-			tick().then(() => (portalTargetRef = findPortalTarget(ref!, portalId)));
+			tick().then(() => {
+				if (ref) {
+					portalTargetRef = findPortalTarget(ref, portalId);
+					if (portalTargetRef && maximised) {
+						size = { height: portalTargetRef.clientHeight, width: portalTargetRef.clientWidth };
+					}
+				}
+			});
 		}
 
 		ready = true;
+	});
+
+	$effect(() => {
+		if (portalTargetRef && maximised && portalSize.current) {
+			size = { height: portalTargetRef.clientHeight, width: portalTargetRef.clientWidth };
+		}
 	});
 
 	$effect(() => {

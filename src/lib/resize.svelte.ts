@@ -270,7 +270,6 @@ function resize(options: ResizeOptions = {}): Attachment<HTMLElement> {
 			element.style.setProperty('width', constrainedWidth + 'px');
 			element.style.setProperty('height', constrainedHeight + 'px');
 
-			// Notify parent of size change
 			onResize?.({ width: constrainedWidth, height: constrainedHeight });
 
 			if (currentHandle.includes('w') || currentHandle.includes('n')) {
