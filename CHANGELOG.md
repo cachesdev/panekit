@@ -1,5 +1,11 @@
 # panekit
 
+## 0.12.0
+
+### Minor Changes
+
+- 39874d5: Add maximised state
+
 ## 0.11.0
 
 ### Minor Changes
