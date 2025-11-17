@@ -1,32 +1,39 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 
+export type PaneSize = { height: number; width: number };
+
 export type DragModifier = 'altKey' | 'ctrlKey' | 'shiftKey' | 'metaKey';
 const defaultModifier: DragModifier = 'altKey';
 
 export class PaneState {
 	focused = $state(true);
 	ref: HTMLDivElement | undefined;
+	portalTargetRef: HTMLDivElement | undefined;
+	size: PaneSize;
 	#id = $state(crypto.randomUUID() as string);
 	dragModifier = $state<DragModifier>(defaultModifier);
 
 	constructor({
-		ref,
+		size,
 		id,
+		ref,
 		dragModifier
 	}: {
-		ref?: HTMLDivElement;
+		size: PaneSize;
 		id?: string;
+		ref?: HTMLDivElement;
 		dragModifier?: DragModifier;
 	}) {
-		if (ref) {
-			this.ref = ref;
-		}
+		this.size = size;
 
 		if (id) {
 			this.#id = id;
 		}
 
+		if (ref) {
+			this.ref = ref;
+		}
 		if (dragModifier) {
 			this.dragModifier = dragModifier;
 		}

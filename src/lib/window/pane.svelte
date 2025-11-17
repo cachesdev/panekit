@@ -87,13 +87,15 @@
 		}
 	});
 
-	let thisPane = new PaneState({ id: paneId, dragModifier });
+	// we create our pane state with the info we have, the rest we need to add
+	// after we find the portal
+	let thisPane = new PaneState({ size, id: paneId, dragModifier });
 	const wm = usePM();
 
 	onMount(() => {
 		if (ref) {
 			thisPane.ref = ref;
-			wm.addPane(() => thisPane!);
+			wm.addPane(() => thisPane);
 			handleRef = ref.querySelector('[data-pane-handle]');
 			contentRef = ref.querySelector('[data-pane-content]');
 
@@ -123,7 +125,7 @@
 	});
 
 	$effect(() => {
-		if (ref && thisPane) {
+		if (ref) {
 			ref.style.zIndex = thisPane.focused ? '1000' : '10';
 		}
 	});
@@ -194,12 +196,12 @@
 
 <svelte:window
 	onkeydown={(ev) => {
-		if (thisPane && ev[thisPane.dragModifier]) {
+		if (ev[thisPane.dragModifier]) {
 			modifierHeld = true;
 		}
 	}}
 	onkeyup={(ev) => {
-		if (thisPane && !ev[thisPane.dragModifier]) {
+		if (!ev[thisPane.dragModifier]) {
 			modifierHeld = false;
 		}
 	}}
@@ -211,7 +213,7 @@
 	role="dialog"
 	tabindex="-1"
 	data-pane=""
-	data-pane-id={thisPane?.id}
+	data-pane-id={thisPane.id}
 	{@attach portal({ target: portalTargetRef })}
 	{@attach canDrag && draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
 	{@attach canResize &&
