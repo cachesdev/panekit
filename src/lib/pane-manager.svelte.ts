@@ -2,6 +2,7 @@ import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 
 export type PaneSize = { height: number; width: number };
+export type PanePosition = { x: number; y: number };
 
 export type DragModifier = 'altKey' | 'ctrlKey' | 'shiftKey' | 'metaKey';
 export type HTMLElementOrSelector = HTMLElement | string;
@@ -11,7 +12,7 @@ const defaultModifier: DragModifier = 'altKey';
 export interface PaneStateOptions {
 	id?: string;
 	size?: PaneSize;
-	position?: { x: number; y: number };
+	position?: PanePosition;
 	maximised?: boolean;
 	dragModifier?: DragModifier;
 	canDrag?: boolean;
@@ -33,10 +34,11 @@ export class PaneState {
 
 	// Layout state
 	size = $state<PaneSize>({ width: 200, height: 200 });
-	position = $state<{ x: number; y: number } | undefined>(undefined);
+	// TODO: Changing position externally doesn't reflect visually
+	position = $state<PanePosition | undefined>(undefined);
 	maximised = $state(false);
 	#sizeBeforeMaximise = $state<PaneSize | undefined>(undefined);
-	#positionBeforeMaximise = $state<{ x: number; y: number } | undefined>(undefined);
+	#positionBeforeMaximise = $state<PanePosition | undefined>(undefined);
 
 	// Interaction state
 	focused = $state(false);
@@ -50,6 +52,7 @@ export class PaneState {
 	canResize = $state(true);
 	constrainToPortal = $state(false);
 	constrainTo = $state<HTMLElementOrSelector | undefined>(undefined);
+	// TODO: Changing portal ID doesn't change portal ref
 	portalId = $state<string | undefined>(undefined);
 
 	constructor(opts?: PaneStateOptions) {

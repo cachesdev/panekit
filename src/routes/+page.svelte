@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Pane, PanekitProvider, PaneState } from '$lib/index.js';
+	import Metadata from './metadata.svelte';
 
 	const leftPane = new PaneState({
 		portalId: 'left-panel',
@@ -46,6 +47,7 @@
 			<button onclick={toggleMaximize1} class="border bg-black px-4 py-2 text-white">
 				{leftPane.maximised ? 'Restore' : 'Maximize'}
 			</button>
+			<Metadata />
 			<p class="mt-2">Size: {leftPane.size.width}x{leftPane.size.height}</p>
 		</Pane.Content>
 	</Pane.Root>

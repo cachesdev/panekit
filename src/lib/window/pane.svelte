@@ -88,8 +88,9 @@
 		};
 	});
 
+	// TODO: This is probably wrong maybe
 	$effect(() => {
-		if (pane.portalTargetRef && pane.maximised && portalSize.current) {
+		if (pane.portalTargetRef && pane.maximised) {
 			pane.size = {
 				height: pane.portalTargetRef.clientHeight,
 				width: pane.portalTargetRef.clientWidth
