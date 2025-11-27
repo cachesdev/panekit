@@ -29,7 +29,7 @@
 		instances,
 		position
 	} from '@neodrag/svelte';
-	import { usePM, PaneState, type DragModifier } from '../pane-manager.svelte.js';
+	import { usePM, PaneState } from '../pane-manager.svelte.js';
 	import type { ControlsPluginData } from '../types.js';
 	import { type WithChildren, type WithElementRef, type HTMLDivAttributes, cn } from '../utils.js';
 	import { resize } from '$lib/resize.svelte.js';
@@ -37,137 +37,113 @@
 	import { portal } from '$lib/portal.svelte';
 	import { ElementSize, onClickOutside } from 'runed';
 
-	type HTMLElementOrSelector = HTMLElement | string;
-
 	type Props = WithChildren<WithElementRef<HTMLDivAttributes, HTMLDivElement>> & {
-		size?: { width: number; height: number };
-		paneId?: string;
-		portalId?: string;
-		dragModifier?: DragModifier;
-		constrainTo?: HTMLElementOrSelector;
-		maximised?: boolean;
-		canDrag?: boolean;
-		canResize?: boolean;
-		constrainToPortal?: boolean;
+		paneState: PaneState;
 	};
 
 	let {
 		ref = $bindable(null),
 		children,
-		size = $bindable({ width: 200, height: 200 }),
-		paneId,
-		portalId,
-		dragModifier,
-		constrainToPortal = false,
-		constrainTo,
-		maximised = $bindable(false),
-		canDrag = true,
-		canResize = true,
 		class: className,
+		paneState: pane,
 		...restProps
 	}: Props = $props();
 
-	// refs
-	let handleRef = $state<HTMLDivElement | null>(null);
-	let contentRef = $state<HTMLDivElement | null>(null);
-	let portalTargetRef = $state<HTMLElement | null>(null);
+	const wm = usePM();
 
 	let ready = $state(false);
-	let modifierHeld = $state(false);
-	let isDragging = $state(false);
-	let portalSize = new ElementSize(() => portalTargetRef);
-
-	// calculate center the position based on the portal
-	let centerPos = $derived.by(() => {
-		if (portalTargetRef) {
-			return {
-				x: (portalTargetRef.clientWidth - size.width) / 2,
-				y: (portalTargetRef.clientHeight - size.height) / 2
-			};
-		}
-	});
-
-	// we create our pane state with the info we have, the rest we need to add
-	// after we find the portal
-	let thisPane = new PaneState({ size, id: paneId, dragModifier });
-	const wm = usePM();
+	let portalSize = new ElementSize(() => pane.portalTargetRef);
 
 	onMount(() => {
 		if (ref) {
-			thisPane.ref = ref;
-			wm.addPane(() => thisPane);
-			handleRef = ref.querySelector('[data-pane-handle]');
-			contentRef = ref.querySelector('[data-pane-content]');
+			pane.ref = ref;
+			wm.addPane(pane);
+			pane.handleRef = (ref.querySelector('[data-pane-handle]') as HTMLDivElement) ?? undefined;
+			pane.contentRef = (ref.querySelector('[data-pane-content]') as HTMLDivElement) ?? undefined;
 
 			onClickOutside(
 				() => ref,
-				() => thisPane.blur()
+				() => pane.blur()
 			);
 
 			// hack so that the portalTarget attachment runs first.
 			tick().then(() => {
 				if (ref) {
-					portalTargetRef = findPortalTarget(ref, portalId);
-					if (portalTargetRef && maximised) {
-						size = { height: portalTargetRef.clientHeight, width: portalTargetRef.clientWidth };
+					pane.portalTargetRef =
+						(findPortalTarget(ref, pane.portalId) as HTMLDivElement) ?? undefined;
+					if (pane.portalTargetRef && pane.maximised) {
+						pane.size = {
+							height: pane.portalTargetRef.clientHeight,
+							width: pane.portalTargetRef.clientWidth
+						};
 					}
 				}
 			});
 		}
 
 		ready = true;
+
+		return () => {
+			wm.removePane(pane.id);
+		};
 	});
 
 	$effect(() => {
-		if (portalTargetRef && maximised && portalSize.current) {
-			size = { height: portalTargetRef.clientHeight, width: portalTargetRef.clientWidth };
+		if (pane.portalTargetRef && pane.maximised && portalSize.current) {
+			pane.size = {
+				height: pane.portalTargetRef.clientHeight,
+				width: pane.portalTargetRef.clientWidth
+			};
+			// Position is already set to 0,0 by maximize() method
 		}
 	});
 
 	$effect(() => {
 		if (ref) {
-			ref.style.zIndex = thisPane.focused ? '1000' : '10';
+			ref.style.zIndex = pane.focused ? '1000' : '10';
 		}
 	});
 
-	let elementPosition = $state<{ x: number; y: number }>();
-
+	// Neodrag compartments - all read/write from pane
 	const positionComp = Compartment.of(() => {
-		return position({ current: elementPosition, default: centerPos });
+		return position({ current: pane.position, default: pane.centered });
 	});
+
 	const eventsComp = Compartment.of(() =>
 		events({
 			onDragStart() {
-				isDragging = true;
+				pane.isDragging = true;
 			},
 			onDrag: (data) => {
-				elementPosition = data.offset;
+				pane.position = data.offset;
 			},
 			onDragEnd() {
-				isDragging = false;
+				pane.isDragging = false;
 			}
 		})
 	);
+
 	const controlsComp = Compartment.of(() =>
 		controls({
 			allow: (root) => {
-				if (modifierHeld) {
+				if (pane.modifierHeld) {
 					return ControlFrom.elements([ref])(root);
 				}
-				return ControlFrom.elements([handleRef])(root);
+				return ControlFrom.elements([pane.handleRef])(root);
 			},
-			block: ControlFrom.elements([contentRef])
+			block: ControlFrom.elements([pane.contentRef])
 		})
 	);
+
 	const boundsComp = Compartment.of(() => {
-		if (constrainTo) {
-			if (constrainTo instanceof HTMLElement) {
-				return bounds(BoundsFrom.element(constrainTo));
+		if (pane.constrainTo) {
+			if (pane.constrainTo instanceof HTMLElement) {
+				return bounds(BoundsFrom.element(pane.constrainTo));
 			}
-			return bounds(BoundsFrom.selector(constrainTo));
+			return bounds(BoundsFrom.selector(pane.constrainTo));
 		}
-		if (portalTargetRef && constrainToPortal) {
-			return bounds(BoundsFrom.element(portalTargetRef));
+		if (pane.portalTargetRef && pane.constrainToPortal) {
+			return bounds(BoundsFrom.element(pane.portalTargetRef));
 		}
 	});
 
@@ -183,8 +159,8 @@
 	// React to external size changes
 	$effect(() => {
 		if (ref && ready) {
-			ref.style.width = `${size.width}px`;
-			ref.style.height = `${size.height}px`;
+			ref.style.width = `${pane.size.width}px`;
+			ref.style.height = `${pane.size.height}px`;
 
 			// Recompute draggable zones when size changes
 			tick().then(() => {
@@ -196,43 +172,54 @@
 
 <svelte:window
 	onkeydown={(ev) => {
-		if (ev[thisPane.dragModifier]) {
-			modifierHeld = true;
+		if (ev[pane.dragModifier]) {
+			pane.modifierHeld = true;
 		}
 	}}
 	onkeyup={(ev) => {
-		if (!ev[thisPane.dragModifier]) {
-			modifierHeld = false;
+		if (!ev[pane.dragModifier]) {
+			pane.modifierHeld = false;
 		}
 	}}
 />
 
 <div
-	class={cn('absolute flex flex-col', isDragging && 'cursor-grabbing', className)}
+	class={cn('absolute flex flex-col', pane.isDragging && 'cursor-grabbing', className)}
 	hidden={!ready}
 	role="dialog"
 	tabindex="-1"
 	data-pane=""
-	data-pane-id={thisPane.id}
-	{@attach portal({ target: portalTargetRef })}
-	{@attach canDrag && draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
-	{@attach canResize &&
+	data-pane-id={pane.id}
+	{@attach portal({ target: pane.portalTargetRef })}
+	{@attach pane.canDrag &&
+		!pane.maximised &&
+		draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
+	{@attach pane.canResize &&
+		!pane.maximised &&
 		resize({
-			minWidth: size.width,
-			minHeight: size.height,
-			position: elementPosition,
+			minWidth: pane.size.width,
+			minHeight: pane.size.height,
+			maxWidth: () =>
+				pane.constrainToPortal && pane.portalTargetRef
+					? pane.portalTargetRef.clientWidth
+					: undefined,
+			maxHeight: () =>
+				pane.constrainToPortal && pane.portalTargetRef
+					? pane.portalTargetRef.clientHeight
+					: undefined,
+			position: pane.position,
 			onResizeEnd: () => {
 				recomputeDraggableZones();
 			},
 			onResize: (newSize) => {
-				size = newSize;
+				pane.size = newSize;
 			},
 			onPositionChange(pos) {
-				elementPosition = pos;
+				pane.position = pos;
 			}
 		})}
 	onmousedown={() => {
-		wm.focusPane(thisPane?.id ?? '');
+		wm.focusPane(pane.id);
 		ref?.focus();
 	}}
 	bind:this={ref}
