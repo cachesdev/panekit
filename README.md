@@ -50,16 +50,23 @@ First, wrap your application with the `PanekitProvider`. This creates the contex
 
 ### Creating Panes
 
-Panes are composed of three main components: `Root`, `Handle`, and `Content`.
+Panes use a state-driven architecture with `PaneState` instances that manage all pane properties reactively.
 
 ```svelte
 <script>
-  import { Pane } from 'panekit';
+  import { Pane, PaneState } from 'panekit';
+  
+  // Create a PaneState instance with configuration
+  const myPane = new PaneState({
+    size: { width: 400, height: 300 },
+    constrainToPortal: true,
+    portalId: 'main-panel'
+  });
   
   let count = $state(0);
 </script>
 
-<Pane.Root class="rounded-md border bg-white shadow-md">
+<Pane.Root paneState={myPane} class="rounded-md border bg-white shadow-md">
   <Pane.Handle class="flex items-center justify-center">
     Window Title
   </Pane.Handle>
@@ -67,6 +74,106 @@ Panes are composed of three main components: `Root`, `Handle`, and `Content`.
     <button onclick={() => (count += 1)}>
       Count: {count}
     </button>
+  </Pane.Content>
+</Pane.Root>
+```
+
+### PaneState
+
+`PaneState` is a reactive class that manages all pane properties. All properties are reactive using Svelte 5 runes and can be read or updated at any time. these properties will also be properly tracked if used inside an `$effect`.
+
+**Constructor Options:**
+
+```typescript
+new PaneState({
+  // Identity
+  id?: string,                    // Custom pane ID (auto-generated if not provided)
+  
+  // Layout
+  size?: { width: number; height: number },  // Initial size (default: 200x200)
+  position?: { x: number; y: number },       // Initial position (default: centered)
+  maximised?: boolean,                       // Start maximized (default: false)
+  
+  // Portal configuration
+  portalId?: string,              // Target portal ID
+  constrainToPortal?: boolean,    // Keep pane within portal bounds (default: false)
+  constrainTo?: HTMLElement | string,  // Constrain to specific element/selector
+  
+  // Interaction
+  canDrag?: boolean,              // Enable dragging (default: true)
+  canResize?: boolean,            // Enable resizing (default: true)
+  dragModifier?: DragModifier,    // Modifier key for full-pane drag (default: 'altKey')
+  
+  // Resize configuration
+  resizeHandles?: ResizeHandle[], // Which handles to show (default: all 8)
+  resizeHandleSize?: number,      // Handle size in pixels (default: 8)
+  resizeHandleOffset?: number,    // Handle offset from edge (default: 8)
+  invisibleResizeHandles?: boolean,  // Hide handles visually (default: true)
+  minWidth?: number,              // Minimum width constraint
+  minHeight?: number,             // Minimum height constraint
+  maxWidth?: number,              // Maximum width constraint
+  maxHeight?: number              // Maximum height constraint
+})
+```
+
+**Reactive Properties:**
+
+```typescript
+// All properties are reactive and can be read/written
+pane.size          // { width: number, height: number }
+pane.position      // { x: number, y: number } | undefined
+pane.maximised     // boolean
+pane.focused       // boolean (read-only, managed by manager)
+pane.isDragging    // boolean (read-only)
+pane.isResizing    // boolean (read-only)
+```
+
+**Methods:**
+
+```typescript
+pane.maximize()    // Maximize the pane to fill its portal
+pane.restore()     // Restore to pre-maximized size and position
+pane.focus()       // Bring pane to front
+pane.blur()        // Remove focus
+```
+
+**Example - Dynamic Configuration:**
+
+```svelte
+<script>
+  const pane = new PaneState({ 
+    constrainToPortal: true,
+    minWidth: 200,
+    minHeight: 150
+  });
+  
+  // Reactively update properties
+  function toggleMaximize() {
+    if (pane.maximised) {
+      pane.restore();
+    } else {
+      pane.maximize();
+    }
+  }
+  
+  function makeSmaller() {
+    pane.size = { 
+      width: pane.size.width - 50, 
+      height: pane.size.height - 50 
+    };
+  }
+</script>
+
+<Pane.Root paneState={pane}>
+  <Pane.Handle>
+    Size: {pane.size.width}x{pane.size.height}
+  </Pane.Handle>
+  <Pane.Content>
+    <button onclick={toggleMaximize}>
+      {pane.maximised ? 'Restore' : 'Maximize'}
+    </button>
+    <button onclick={makeSmaller}>Make Smaller</button>
+    <p>Dragging: {pane.isDragging ? 'Yes' : 'No'}</p>
   </Pane.Content>
 </Pane.Root>
 ```
@@ -79,32 +186,25 @@ The root provider component that must wrap your application.
 
 **Props:**
 
-- `dragModifier?: DragModifier` - Modifier key required for full-pane dragging (`'altKey' | 'ctrlKey' | 'shiftKey' | 'metaKey'`). Default: `'altKey'`
+- `dragModifier?: DragModifier` - Global modifier key for full-pane dragging (`'altKey' | 'ctrlKey' | 'shiftKey' | 'metaKey'`). Default: `'altKey'`
 
 #### `Pane.Root`
 
-The main pane container. Panes are draggable and resizable by default.
+The main pane container. **Requires a `paneState` prop.**
 
 **Props:**
 
-- `size?: { width: number; height: number }` - (Bindable) size of the pane. Default: `{ width: 200, height: 200 }`
-- `paneId?: string` - Custom ID for the pane. Auto-generated if not provided
-- `portalId?: string` - Target a specific portal by ID
-- `dragModifier?: DragModifier` - Override the global drag modifier for this pane
-- `constrainToPortal?: boolean` - Constrains the pane to the portal bounds. Default: `false`
-- `constrainTo?: HTMLElementOrSelector` - Constrains the pane to a given element or selector
-- `canDrag?: boolean` - Allows for disabling drag functionality. Default: `true`
-- `maximised?: boolean` - (Bindable) tracks maximised state. Default: `true`
-- `canResize?: boolean` - Allows for disabling resize functionality. Default: `true`
+- `paneState: PaneState` - **(Required)** The PaneState instance managing this pane
 - Standard HTML div attributes
 
 **Behavior:**
 
 - Panes can be dragged by their handle
 - Hold the drag modifier key (Alt by default) to drag from anywhere on the pane
-- Panes are resizable from all edges and corners
-- Clicking a pane brings it to focus (higher z-index and visual highlight)
-- Panes are automatically centered in their portal target on mount
+- Panes are resizable from all edges and corners by default
+- Clicking a pane brings it to focus (higher z-index)
+- Panes automatically stay within portal bounds when `constrainToPortal` is enabled
+- Panes automatically adjust position/size when portal resizes (e.g., browser window resize)
 
 #### `Pane.Handle`
 
@@ -137,6 +237,21 @@ Portal target component for rendering panes. The provider includes one by defaul
 You can create multiple portal targets to render panes in different areas:
 
 ```svelte
+<script>
+  import { Pane, PaneState } from 'panekit';
+  
+  const leftPane = new PaneState({
+    portalId: 'left-panel',
+    constrainToPortal: true
+  });
+  
+  const rightPane = new PaneState({
+    portalId: 'right-panel',
+    constrainToPortal: true,
+    size: { width: 300, height: 250 }
+  });
+</script>
+
 <PanekitProvider>
   <div class="flex h-screen">
     <div class="flex-1">
@@ -147,8 +262,13 @@ You can create multiple portal targets to render panes in different areas:
     </div>
   </div>
   
-  <!-- This pane will render in the right panel -->
-  <Pane.Root portalId="right-panel">
+  <!-- Panes render in their respective portals -->
+  <Pane.Root paneState={leftPane}>
+    <Pane.Handle>Left Side Window</Pane.Handle>
+    <Pane.Content>Content here</Pane.Content>
+  </Pane.Root>
+  
+  <Pane.Root paneState={rightPane}>
     <Pane.Handle>Right Side Window</Pane.Handle>
     <Pane.Content>Content here</Pane.Content>
   </Pane.Root>
@@ -157,21 +277,31 @@ You can create multiple portal targets to render panes in different areas:
 
 #### Pane Management
 
-The library provides a (broken, leaky) pane manager for programmatic control:
+The library provides a pane manager for programmatic control:
 
 ```svelte
 <script>
-  import { usePM } from 'panekit';
+  import { usePM, PaneState } from 'panekit';
   
   const paneManager = usePM();
+  const myPane = new PaneState({ id: 'my-pane' });
   
-  function focusPane(id) {
-    paneManager.focusPane(id);
+  function focusPane() {
+    paneManager.focusPane('my-pane');
   }
   
   function blurAllPanes() {
     paneManager.blurAll();
   }
+  
+  function maximizePane() {
+    paneManager.maximizePane('my-pane');
+  }
+  
+  // Query panes
+  const allPanes = paneManager.panes;              // Get all panes
+  const pane = paneManager.getPaneById('my-pane'); // Get specific pane
+  const portalPanes = paneManager.getPanesByPortal('left-panel'); // Get panes in portal
 </script>
 ```
 

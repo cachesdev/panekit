@@ -6,6 +6,7 @@ export type PanePosition = { x: number; y: number };
 
 export type DragModifier = 'altKey' | 'ctrlKey' | 'shiftKey' | 'metaKey';
 export type HTMLElementOrSelector = HTMLElement | string;
+export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 const defaultModifier: DragModifier = 'altKey';
 
@@ -20,6 +21,14 @@ export interface PaneStateOptions {
 	constrainToPortal?: boolean;
 	constrainTo?: HTMLElementOrSelector;
 	portalId?: string;
+	resizeHandles?: ResizeHandle[];
+	resizeHandleSize?: number;
+	resizeHandleOffset?: number;
+	invisibleResizeHandles?: boolean;
+	minWidth?: number;
+	minHeight?: number;
+	maxWidth?: number;
+	maxHeight?: number;
 }
 
 export class PaneState {
@@ -55,6 +64,16 @@ export class PaneState {
 	// TODO: Changing portal ID doesn't change portal ref
 	portalId = $state<string | undefined>(undefined);
 
+	// Resize configuration
+	resizeHandles = $state<ResizeHandle[]>(['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']);
+	resizeHandleSize = $state(8);
+	resizeHandleOffset = $state(8);
+	invisibleResizeHandles = $state(true);
+	minWidth = $state<number | undefined>(undefined);
+	minHeight = $state<number | undefined>(undefined);
+	maxWidth = $state<number | undefined>(undefined);
+	maxHeight = $state<number | undefined>(undefined);
+
 	constructor(opts?: PaneStateOptions) {
 		if (opts) {
 			if (opts.id) this.#id = opts.id;
@@ -67,6 +86,16 @@ export class PaneState {
 			if (opts.constrainToPortal !== undefined) this.constrainToPortal = opts.constrainToPortal;
 			if (opts.constrainTo) this.constrainTo = opts.constrainTo;
 			if (opts.portalId) this.portalId = opts.portalId;
+			// Resize options
+			if (opts.resizeHandles) this.resizeHandles = opts.resizeHandles;
+			if (opts.resizeHandleSize !== undefined) this.resizeHandleSize = opts.resizeHandleSize;
+			if (opts.resizeHandleOffset !== undefined) this.resizeHandleOffset = opts.resizeHandleOffset;
+			if (opts.invisibleResizeHandles !== undefined)
+				this.invisibleResizeHandles = opts.invisibleResizeHandles;
+			if (opts.minWidth !== undefined) this.minWidth = opts.minWidth;
+			if (opts.minHeight !== undefined) this.minHeight = opts.minHeight;
+			if (opts.maxWidth !== undefined) this.maxWidth = opts.maxWidth;
+			if (opts.maxHeight !== undefined) this.maxHeight = opts.maxHeight;
 		}
 	}
 
@@ -88,17 +117,36 @@ export class PaneState {
 		this.focused = false;
 	}
 
+	// TODO: needs optimizing
 	maximize() {
 		if (!this.maximised) {
-			// Store current size and position before maximizing
+			// Store current size before maximizing
 			this.#sizeBeforeMaximise = { ...this.size };
+
+			// If position is not set yet, calculate it from DOM
+			if (this.position === undefined && this.ref && this.portalTargetRef) {
+				const rect = this.ref.getBoundingClientRect();
+				const portalRect = this.portalTargetRef.getBoundingClientRect();
+				this.position = {
+					x: rect.left - portalRect.left,
+					y: rect.top - portalRect.top
+				};
+			}
+
+			// Store current position before maximizing
 			this.#positionBeforeMaximise = this.position ? { ...this.position } : undefined;
 
-			// Set position to 0,0 FIRST so the pane grows from top-left
+			// HACK: if position is not set and we try to change size, weird things happen
 			this.position = { x: 0, y: 0 };
+
+			if (this.portalTargetRef) {
+				this.size = {
+					height: this.portalTargetRef.clientHeight,
+					width: this.portalTargetRef.clientWidth
+				};
+			}
 		}
 		this.maximised = true;
-		// Size will be set by effect in component
 	}
 
 	restore() {
@@ -178,6 +226,7 @@ export class PaneManager {
 	}
 }
 
+// TODO: should use the new type safe context API from svelte 5
 const PaneManagerKey = Symbol('paneManager');
 
 export function setPaneManagerContext(wm: PaneManager) {
@@ -186,4 +235,21 @@ export function setPaneManagerContext(wm: PaneManager) {
 
 export function usePM(): PaneManager {
 	return getContext(PaneManagerKey);
+}
+
+export function findPortalTarget(element: HTMLElement, portalId?: string) {
+	if (portalId)
+		return document.querySelector<HTMLElement>(`[data-pane-portal-target="${portalId}"]`);
+
+	let current: HTMLElement | null = element;
+
+	while (current && current.tagName !== document.documentElement.tagName) {
+		const target = current.querySelector('[data-pane-portal-target=""]');
+		if (target && target instanceof HTMLElement) {
+			return target;
+		}
+		current = current.parentElement;
+	}
+
+	return null;
 }

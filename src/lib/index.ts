@@ -13,5 +13,6 @@ export {
 	type PaneSize,
 	type PanePosition,
 	type DragModifier,
-	type HTMLElementOrSelector
+	type HTMLElementOrSelector,
+	type ResizeHandle
 } from './pane-manager.svelte.js';

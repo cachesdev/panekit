@@ -1,22 +1,3 @@
-<script module lang="ts">
-	function findPortalTarget(element: HTMLElement, portalId?: string) {
-		if (portalId)
-			return document.querySelector<HTMLElement>(`[data-pane-portal-target="${portalId}"]`);
-
-		let current: HTMLElement | null = element;
-
-		while (current && current.tagName !== document.documentElement.tagName) {
-			const target = current.querySelector('[data-pane-portal-target=""]');
-			if (target && target instanceof HTMLElement) {
-				return target;
-			}
-			current = current.parentElement;
-		}
-
-		return null;
-	}
-</script>
-
 <script lang="ts">
 	import {
 		bounds,
@@ -29,13 +10,13 @@
 		instances,
 		position
 	} from '@neodrag/svelte';
-	import { usePM, PaneState } from '../pane-manager.svelte.js';
+	import { usePM, PaneState, findPortalTarget } from '../pane-manager.svelte.js';
 	import type { ControlsPluginData } from '../types.js';
 	import { type WithChildren, type WithElementRef, type HTMLDivAttributes, cn } from '../utils.js';
 	import { resize } from '$lib/resize.svelte.js';
 	import { onMount, tick } from 'svelte';
 	import { portal } from '$lib/portal.svelte';
-	import { ElementSize, onClickOutside } from 'runed';
+	import { onClickOutside, ElementSize } from 'runed';
 
 	type Props = WithChildren<WithElementRef<HTMLDivAttributes, HTMLDivElement>> & {
 		paneState: PaneState;
@@ -52,7 +33,19 @@
 	const wm = usePM();
 
 	let ready = $state(false);
-	let portalSize = new ElementSize(() => pane.portalTargetRef);
+
+	const portalSize = new ElementSize(() => pane.portalTargetRef);
+
+	// HACK: this function is needed since Neodrag wont update draggable zones by itself after resize happens.
+	// it's a hack because neodrag doesn't even make these types visible. PD: it may be a neodrag bug that this isn't triggered.
+	function recomputeDraggableZones() {
+		if (ref && instances.has(ref)) {
+			const data: ControlsPluginData = instances.get(ref)!.states.get('neodrag:controls');
+			const { allow_zones, block_zones } = data.compute_zones();
+			data.allow_zones = allow_zones;
+			data.block_zones = block_zones;
+		}
+	}
 
 	onMount(() => {
 		if (ref) {
@@ -71,6 +64,8 @@
 				if (ref) {
 					pane.portalTargetRef =
 						(findPortalTarget(ref, pane.portalId) as HTMLDivElement) ?? undefined;
+
+					// if maximised was preset, we trigger it
 					if (pane.portalTargetRef && pane.maximised) {
 						pane.size = {
 							height: pane.portalTargetRef.clientHeight,
@@ -88,24 +83,82 @@
 		};
 	});
 
-	// TODO: This is probably wrong maybe
-	$effect(() => {
-		if (pane.portalTargetRef && pane.maximised) {
-			pane.size = {
-				height: pane.portalTargetRef.clientHeight,
-				width: pane.portalTargetRef.clientWidth
-			};
-			// Position is already set to 0,0 by maximize() method
-		}
-	});
-
+	// TODO: This is a quick hack but we should probably store it as a prop and do it properly
 	$effect(() => {
 		if (ref) {
 			ref.style.zIndex = pane.focused ? '1000' : '10';
 		}
 	});
 
-	// Neodrag compartments - all read/write from pane
+	// Constrain pane position and size when portal resizes
+	$effect(() => {
+		if (
+			!pane.constrainToPortal ||
+			!pane.portalTargetRef ||
+			!ready ||
+			pane.maximised ||
+			pane.isDragging ||
+			pane.isResizing
+		) {
+			return;
+		}
+
+		// Read portal size to track it
+		const portalWidth = portalSize.current.width;
+		const portalHeight = portalSize.current.height;
+
+		if (portalWidth === 0 || portalHeight === 0) return;
+
+		const pos = pane.position;
+		if (!pos) return; // Don't adjust if position not set yet
+
+		let newSize = { ...pane.size };
+		let newPos = { ...pos };
+		let changed = false;
+
+		// If pane is too wide for portal, shrink it
+		if (newSize.width > portalWidth) {
+			newSize.width = portalWidth;
+			changed = true;
+		}
+
+		// If pane is too tall for portal, shrink it
+		if (newSize.height > portalHeight) {
+			newSize.height = portalHeight;
+			changed = true;
+		}
+
+		// If pane extends beyond right edge, move it left
+		if (newPos.x + newSize.width > portalWidth) {
+			newPos.x = Math.max(0, portalWidth - newSize.width);
+			changed = true;
+		}
+
+		// If pane extends beyond bottom edge, move it up
+		if (newPos.y + newSize.height > portalHeight) {
+			newPos.y = Math.max(0, portalHeight - newSize.height);
+			changed = true;
+		}
+
+		// If pane is beyond left edge, move it right
+		if (newPos.x < 0) {
+			newPos.x = 0;
+			changed = true;
+		}
+
+		// If pane is beyond top edge, move it down
+		if (newPos.y < 0) {
+			newPos.y = 0;
+			changed = true;
+		}
+
+		if (changed) {
+			pane.size = newSize;
+			pane.position = newPos;
+		}
+	});
+
+	// Neodrag reactive compartments; FIXME: This is what may be breaking programatic positioning
 	const positionComp = Compartment.of(() => {
 		return position({ current: pane.position, default: pane.centered });
 	});
@@ -148,16 +201,7 @@
 		}
 	});
 
-	function recomputeDraggableZones() {
-		if (ref && instances.has(ref)) {
-			const data: ControlsPluginData = instances.get(ref)!.states.get('neodrag:controls');
-			const { allow_zones, block_zones } = data.compute_zones();
-			data.allow_zones = allow_zones;
-			data.block_zones = block_zones;
-		}
-	}
-
-	// React to external size changes
+	// React to external size changes; TODO: may need to move this into the pane class instead
 	$effect(() => {
 		if (ref && ready) {
 			ref.style.width = `${pane.size.width}px`;
@@ -195,30 +239,7 @@
 	{@attach pane.canDrag &&
 		!pane.maximised &&
 		draggable(() => [positionComp, eventsComp, controlsComp, boundsComp])}
-	{@attach pane.canResize &&
-		!pane.maximised &&
-		resize({
-			minWidth: pane.size.width,
-			minHeight: pane.size.height,
-			maxWidth: () =>
-				pane.constrainToPortal && pane.portalTargetRef
-					? pane.portalTargetRef.clientWidth
-					: undefined,
-			maxHeight: () =>
-				pane.constrainToPortal && pane.portalTargetRef
-					? pane.portalTargetRef.clientHeight
-					: undefined,
-			position: pane.position,
-			onResizeEnd: () => {
-				recomputeDraggableZones();
-			},
-			onResize: (newSize) => {
-				pane.size = newSize;
-			},
-			onPositionChange(pos) {
-				pane.position = pos;
-			}
-		})}
+	{@attach pane.canResize && !pane.maximised && resize(pane)}
 	onmousedown={() => {
 		wm.focusPane(pane.id);
 		ref?.focus();

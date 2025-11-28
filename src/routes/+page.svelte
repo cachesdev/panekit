@@ -47,6 +47,15 @@
 			<button onclick={toggleMaximize1} class="border bg-black px-4 py-2 text-white">
 				{leftPane.maximised ? 'Restore' : 'Maximize'}
 			</button>
+			<input
+				type="range"
+				min="1"
+				max="1000"
+				bind:value={
+					() => rightPane.position?.x ?? 0,
+					(v) => v && rightPane.position && (rightPane.position!.x = v)
+				}
+			/>
 			<Metadata />
 			<p class="mt-2">Size: {leftPane.size.width}x{leftPane.size.height}</p>
 		</Pane.Content>
