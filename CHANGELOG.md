@@ -1,5 +1,11 @@
 # panekit
 
+## 0.13.0
+
+### Minor Changes
+
+- 89205b3: Big refactor moving away from component props towards a single source of truth reactive class instead (PaneState)
+
 ## 0.12.0
 
 ### Minor Changes
