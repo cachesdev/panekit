@@ -12,12 +12,8 @@ const cursors: Record<ResizeHandle, string> = {
 	sw: 'sw-resize'
 };
 
-function getCursorForHandle(handle: ResizeHandle): string {
-	return cursors[handle];
-}
-
 function getHandleStyles(handle: ResizeHandle, size = 8, offset = 8, showHandles = false): string {
-	const base = `position: absolute; cursor: ${getCursorForHandle(handle)};`;
+	const base = `position: absolute; cursor: ${cursors[handle]};`;
 	const bg = showHandles ? 'background: rgba(255,0,0,0.3);' : 'background: transparent;';
 	const dimensions = `width: ${size}px; height: ${size}px;`;
 
@@ -196,7 +192,7 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 			document.addEventListener('mouseup', handleMouseUp);
 			document.addEventListener('touchmove', handleTouchMove);
 			document.addEventListener('touchend', handleMouseUp);
-			document.body.style.cursor = getCursorForHandle(handle);
+			document.body.style.cursor = cursors[handle];
 		}
 
 		function handleMouseMove(ev: MouseEvent) {
