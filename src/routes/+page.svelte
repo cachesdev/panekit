@@ -3,6 +3,7 @@
 	import Metadata from './metadata.svelte';
 
 	const leftPane = new PaneState({
+		id: 'ventana-izquierda',
 		portalId: 'left-panel',
 		constrainToPortal: true
 	});
@@ -42,7 +43,7 @@
 
 	<!-- Left pane -->
 	<Pane.Root paneState={leftPane} class="border">
-		<Pane.Handle>Left Pane</Pane.Handle>
+		<Pane.Handle>{leftPane.titleText}</Pane.Handle>
 		<Pane.Content>
 			<button onclick={toggleMaximize1} class="border bg-black px-4 py-2 text-white">
 				{leftPane.maximised ? 'Restore' : 'Maximize'}
@@ -63,7 +64,7 @@
 
 	<!-- Right pane -->
 	<Pane.Root paneState={rightPane} class="border">
-		<Pane.Handle>Right Pane</Pane.Handle>
+		<Pane.Handle>{rightPane.titleText}</Pane.Handle>
 		<Pane.Content>
 			<button onclick={toggleMaximize2} class="border bg-green-700 px-4 py-2 text-white">
 				{rightPane.maximised ? 'Restore' : 'Maximize'}

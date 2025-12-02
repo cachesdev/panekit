@@ -14,6 +14,7 @@ export interface PaneStateOptions {
 	id?: string;
 	size?: PaneSize;
 	position?: PanePosition;
+	titleText?: string;
 	maximised?: boolean;
 	dragModifier?: DragModifier;
 	canDrag?: boolean;
@@ -35,6 +36,9 @@ export class PaneState {
 	// Core identity
 	#id = $state(crypto.randomUUID() as string);
 
+	// Metadata
+	titleText = $state(`Pane ${this.id}`);
+
 	// Refs (set by component)
 	ref = $state<HTMLDivElement | undefined>(undefined);
 	portalTargetRef = $state<HTMLDivElement | undefined>(undefined);
@@ -43,8 +47,9 @@ export class PaneState {
 
 	// Layout state
 	size = $state<PaneSize>({ width: 200, height: 200 });
-	// TODO: Changing position externally doesn't reflect visually
+	// FIXME: Changing position externally doesn't reflect visually
 	position = $state<PanePosition | undefined>(undefined);
+	// FIXME: when window is resized bigger, window wont properly take up maximised space
 	maximised = $state(false);
 	#sizeBeforeMaximise = $state<PaneSize | undefined>(undefined);
 	#positionBeforeMaximise = $state<PanePosition | undefined>(undefined);
@@ -89,6 +94,7 @@ export class PaneState {
 			// Resize options
 			if (opts.resizeHandles) this.resizeHandles = opts.resizeHandles;
 			if (opts.resizeHandleSize !== undefined) this.resizeHandleSize = opts.resizeHandleSize;
+			if (opts.titleText !== undefined) this.titleText = opts.titleText;
 			if (opts.resizeHandleOffset !== undefined) this.resizeHandleOffset = opts.resizeHandleOffset;
 			if (opts.invisibleResizeHandles !== undefined)
 				this.invisibleResizeHandles = opts.invisibleResizeHandles;

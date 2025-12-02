@@ -2,7 +2,7 @@
 
 Panekit is a headless window manager toolkit for Svelte 5.
 
-The idea behind Panekit originates from old school MDI style GUI from the era of Java Swing and Visual Fox Pro, with a modern touch in the form of tiling modes and a declarative style.
+The idea behind Panekit originates from old school MDI style GUI from the era of Java Swing and Visual Fox Pro, with a modern touch in the form of tiling modes (Coming soon!) and a declarative style.
 
 ![User tries to drag windows around](./static/yay-windows.webp)
 
@@ -10,15 +10,15 @@ The idea behind Panekit originates from old school MDI style GUI from the era of
 
 If you are planning to use this, beware of the following:
 
-- Extremely early development. It barely works.
+- Early development. Expect many bugs, broken reactivity and wildly changing APIs.
 - I put 0 effort in optimizing (yet)
 - I put 0 effort in bundle size (yet)
 - I don't plan on properly supporting mobile until Neodrag is ripped out for a different solution. This is currently already buggy on mobile, and I haven't figured out how to fix it.
 - If a library helps, I will add it, but the objective is to have no (core) depedendencies in v1.
 - Breaking changes will happen, in fact maybe even guaranteed to happen every minor version (until V1)
-- I have no tests. This is not because I don't want to test, Playwright just doesn't run in fedora. (I am open to test though! just tell me how)
+- I have no tests. This is not because I don't want to test, Playwright just doesn't run in Fedora. (I am open to test though! just tell me how)
 - I've made this mainly for my personal use, specifically to rewrite the aforementioned MDI style GUIs into more portable web based UI, however I will still accept feature PRs if useful.
-- I am a backend dev. "React" for me is that one youtube channel that tried to copyright the word.
+- I am a backend dev, that means I am kinda clueless about what good frontend code entails.
 
 ## Installation
 
@@ -32,7 +32,7 @@ npm i panekit
 
 ### Basic Setup
 
-First, wrap your application with the `PanekitProvider`. This creates the context needed for window management and sets up the portal target where panes will be rendered.
+First, wrap your application with the `PanekitProvider`. This creates the context needed for window management and sets up a portal target (inside the provider) where panes will be rendered.
 
 ```svelte
 <script>
@@ -80,14 +80,14 @@ Panes use a state-driven architecture with `PaneState` instances that manage all
 
 ### PaneState
 
-`PaneState` is a reactive class that manages all pane properties. All properties are reactive using Svelte 5 runes and can be read or updated at any time. these properties will also be properly tracked if used inside an `$effect`.
+`PaneState` is a reactive class that manages all pane properties. All properties are reactive using runes and can be read or updated at any time. these properties will also be properly tracked if used inside an `$effect`.
 
 **Constructor Options:**
 
 ```typescript
 new PaneState({
   // Identity
-  id?: string,                    // Custom pane ID (auto-generated if not provided)
+  id?: string,                    // Custom pane ID (auto-generated UUID if not provided)
   
   // Layout
   size?: { width: number; height: number },  // Initial size (default: 200x200)
@@ -307,7 +307,7 @@ The library provides a pane manager for programmatic control:
 
 ### Styling
 
-Panekit is headless and provides minimal default styling. It's designed with utility classes in mind (Tailwind won, accept it), classes are deduplicated and merged via the `cn` helper internally, so svelte 5 cslx classes should still work just fine.
+Panekit is headless and provides minimal default styling. It's designed with utility classes in mind, classes are deduplicated and merged via the `cn` helper internally, so svelte 5 cslx classes should still work just fine.
 
 You can style based on data attributes if needed. each component has data attributes you can hook into for styling:
 
@@ -316,8 +316,10 @@ You can style based on data attributes if needed. each component has data attrib
 - `[data-pane-content]` - Applied to content elements
 - `[data-pane-portal-target]` - Applied to portal target elements
 
-More data attributes will be added so that you can style based on drag state, resize state, focus state and so on. I am just lazy so I didn't do it yet.
+More data attributes will be added so that you can style based on drag state, resize state, focus state and so on. I am just hammered with work so I didn't do it yet.
+
+NOTE: The way we currently generate CSS for the library is a bit wonky and may create conflicts, if anyone has a better idea on how to do this better (maybe I should have just used plain CSS...) I am all ears.
 
 ### Browser Support
 
-I honestly have no idea. probably ones that have CSS `has:` and above.
+I honestly have no idea.
