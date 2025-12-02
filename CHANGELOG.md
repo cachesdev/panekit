@@ -1,5 +1,11 @@
 # panekit
 
+## 0.14.0
+
+### Minor Changes
+
+- 5cb3e27: Add titleText prop to pane class
+
 ## 0.13.0
 
 ### Minor Changes
