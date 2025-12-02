@@ -11,6 +11,6 @@
 	let { ref = $bindable(null), children, class: className, ...restProps }: Props = $props();
 </script>
 
-<div class={cn('w-full flex-1', className)} data-window-content="" bind:this={ref} {...restProps}>
+<div class={cn('w-full flex-1', className)} data-pane-content="" bind:this={ref} {...restProps}>
 	{@render children?.()}
 </div>

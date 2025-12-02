@@ -236,6 +236,7 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 
 			// If no explicit minimum is set, calculate based on content
 			if (minWidth === undefined) {
+				console.log(!!pane.contentRef);
 				// Use at least 100px or the content width, whichever is larger; FIXME: Doesn't work very well
 				minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
 			}
