@@ -1,5 +1,16 @@
 # panekit
 
+## 0.15.0
+
+### Minor Changes
+
+- e42c759: Rename invisibleResizeHandles to showResizeHandles
+
+### Patch Changes
+
+- 2791e85: Fix wrong data attribute for pane content
+- 1008052: fix isResizing prop not being properly set
+
 ## 0.14.0
 
 ### Minor Changes
