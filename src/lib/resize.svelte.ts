@@ -121,7 +121,6 @@ function calculatePositionAdjustment(
 
 function resize(pane: PaneState): Attachment<HTMLElement> {
 	return (element) => {
-		let isResizing = false;
 		let currentHandle: ResizeHandle;
 		let startX = 0;
 		let startY = 0;
@@ -172,12 +171,10 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 		}
 
 		function startResize(ev: MouseEvent | TouchEvent, handle: ResizeHandle) {
-			isResizing = true;
+			pane.isResizing = true;
 			currentHandle = handle;
 
 			[startX, startY] = getEventCoordinates(ev);
-
-			pane.isResizing = true;
 
 			const rect = element.getBoundingClientRect();
 			startWidth = rect.width;
@@ -203,14 +200,14 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 		}
 
 		function handleMouseMove(ev: MouseEvent) {
-			if (!isResizing) return;
+			if (!pane.isResizing) return;
 			ev.preventDefault();
 			ev.stopPropagation();
 			processMove(ev.clientX, ev.clientY);
 		}
 
 		function handleTouchMove(ev: TouchEvent) {
-			if (!isResizing) return;
+			if (!pane.isResizing) return;
 			ev.preventDefault();
 			ev.stopPropagation();
 			const touch = ev.touches[0];
@@ -236,9 +233,9 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 
 			// If no explicit minimum is set, calculate based on content
 			if (minWidth === undefined) {
-				console.log(!!pane.contentRef);
 				// Use at least 100px or the content width, whichever is larger; FIXME: Doesn't work very well
-				minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
+				// minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
+				minWidth = 100;
 			}
 
 			if (minHeight === undefined) {
@@ -324,7 +321,6 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 
 		function handleMouseUp(ev: Event) {
 			ev.preventDefault();
-			isResizing = false;
 			pane.isResizing = false;
 			document.removeEventListener('mousemove', handleMouseMove);
 			document.removeEventListener('mouseup', handleMouseUp);
