@@ -58,6 +58,7 @@
 				}
 			/>
 			<Metadata />
+			<input type="checkbox" bind:checked={leftPane.showResizeHandles} />
 			<p>isResizing: {leftPane.isResizing}</p>
 			<p class="mt-2">Size: {leftPane.size.width}x{leftPane.size.height}</p>
 		</Pane.Content>

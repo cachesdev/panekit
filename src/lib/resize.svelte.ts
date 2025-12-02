@@ -133,7 +133,7 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 		const handles = pane.resizeHandles;
 		const handleSize = pane.resizeHandleSize;
 		const handleOffset = pane.resizeHandleOffset;
-		const invisibleHandles = pane.invisibleResizeHandles;
+		const showResizeHandles = pane.showResizeHandles;
 
 		handles.forEach((handle) => {
 			const handleElement = document.createElement('div');
@@ -142,7 +142,7 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 				handle,
 				handleSize,
 				handleOffset,
-				!invisibleHandles
+				showResizeHandles
 			);
 
 			handleElement.addEventListener('mousedown', (ev) => {

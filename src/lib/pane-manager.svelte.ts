@@ -25,7 +25,7 @@ export interface PaneStateOptions {
 	resizeHandles?: ResizeHandle[];
 	resizeHandleSize?: number;
 	resizeHandleOffset?: number;
-	invisibleResizeHandles?: boolean;
+	showResizeHandles?: boolean;
 	minWidth?: number;
 	minHeight?: number;
 	maxWidth?: number;
@@ -73,7 +73,7 @@ export class PaneState {
 	resizeHandles = $state<ResizeHandle[]>(['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']);
 	resizeHandleSize = $state(8);
 	resizeHandleOffset = $state(8);
-	invisibleResizeHandles = $state(true);
+	showResizeHandles = $state(false);
 	minWidth = $state<number | undefined>(undefined);
 	minHeight = $state<number | undefined>(undefined);
 	maxWidth = $state<number | undefined>(undefined);
@@ -96,8 +96,7 @@ export class PaneState {
 			if (opts.resizeHandleSize !== undefined) this.resizeHandleSize = opts.resizeHandleSize;
 			if (opts.titleText !== undefined) this.titleText = opts.titleText;
 			if (opts.resizeHandleOffset !== undefined) this.resizeHandleOffset = opts.resizeHandleOffset;
-			if (opts.invisibleResizeHandles !== undefined)
-				this.invisibleResizeHandles = opts.invisibleResizeHandles;
+			if (opts.showResizeHandles !== undefined) this.showResizeHandles = opts.showResizeHandles;
 			if (opts.minWidth !== undefined) this.minWidth = opts.minWidth;
 			if (opts.minHeight !== undefined) this.minHeight = opts.minHeight;
 			if (opts.maxWidth !== undefined) this.maxWidth = opts.maxWidth;
