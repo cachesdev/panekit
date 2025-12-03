@@ -1,6 +1,7 @@
 import type { Attachment } from 'svelte/attachments';
 import type { PaneState, ResizeHandle } from './pane-manager.svelte.js';
 
+/** Maps internal handle representation to their CSS variations. */
 const cursors: Record<ResizeHandle, string> = {
 	n: 'n-resize',
 	s: 's-resize',
@@ -12,11 +13,15 @@ const cursors: Record<ResizeHandle, string> = {
 	sw: 'sw-resize'
 };
 
+/** Calculates CSS styles for a given handle. */
 function getHandleStyles(handle: ResizeHandle, size = 8, offset = 8, showHandles = false): string {
 	const base = `position: absolute; cursor: ${cursors[handle]};`;
 	const bg = showHandles ? 'background: rgba(255,0,0,0.3);' : 'background: transparent;';
 	const dimensions = `width: ${size}px; height: ${size}px;`;
 
+	// INFO: in absolute positioning, the browser will automatically set non
+	// explicit positions (top, bottom, right, left) to satisfy the explicit
+	// ones, hence why the corner handles automatically get positioned properly.
 	const positioning = (() => {
 		switch (handle) {
 			case 'se':
@@ -134,6 +139,9 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 		handles.forEach((handle) => {
 			const handleElement = document.createElement('div');
 			handleElement.setAttribute('data-resize-handle', handle);
+
+			// INFO: Setting cssText directly makes it harder for people to mess
+			// with the CSS directly, but this is just easier to do.
 			handleElement.style.cssText = getHandleStyles(
 				handle,
 				handleSize,
@@ -141,6 +149,7 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 				showResizeHandles
 			);
 
+			// event propagation is stopped to not mess with Neodrag
 			handleElement.addEventListener('mousedown', (ev) => {
 				ev.preventDefault();
 				ev.stopPropagation();
