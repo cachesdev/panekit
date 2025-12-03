@@ -82,7 +82,7 @@ function applyConstraints(
 	};
 }
 
-function calculateNewDimensions(
+function calculateNewSize(
 	handle: ResizeHandle,
 	deltaX: number,
 	deltaY: number,
@@ -120,15 +120,17 @@ function calculatePositionAdjustment(
 	return { x: newDragX, y: newDragY };
 }
 
+function getEventCoordinates(ev: MouseEvent | TouchEvent): [number, number] {
+	if (ev instanceof MouseEvent) {
+		return [ev.clientX, ev.clientY];
+	} else {
+		const touch = ev.touches[0];
+		return [touch.clientX, touch.clientY];
+	}
+}
+
 function resize(pane: PaneState): Attachment<HTMLElement> {
 	return (element) => {
-		let currentHandle: ResizeHandle;
-		let startX = 0;
-		let startY = 0;
-		let startWidth = 0;
-		let startHeight = 0;
-		let startDragX = 0;
-		let startDragY = 0;
 		const handleElements: HTMLElement[] = [];
 
 		const handles = pane.resizeHandles;
@@ -139,9 +141,6 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 		handles.forEach((handle) => {
 			const handleElement = document.createElement('div');
 			handleElement.setAttribute('data-resize-handle', handle);
-
-			// INFO: Setting cssText directly makes it harder for people to mess
-			// with the CSS directly, but this is just easier to do.
 			handleElement.style.cssText = getHandleStyles(
 				handle,
 				handleSize,
@@ -149,195 +148,194 @@ function resize(pane: PaneState): Attachment<HTMLElement> {
 				showResizeHandles
 			);
 
-			// event propagation is stopped to not mess with Neodrag
 			handleElement.addEventListener('mousedown', (ev) => {
 				ev.preventDefault();
 				ev.stopPropagation();
-				startResize(ev, handle);
+				startResize(element, pane, ev, handle);
 			});
 
 			handleElement.addEventListener('touchstart', (ev) => {
 				ev.preventDefault();
 				ev.stopPropagation();
-				startResize(ev, handle);
+				startResize(element, pane, ev, handle);
 			});
 
 			element.appendChild(handleElement);
 			handleElements.push(handleElement);
 		});
 
-		function getEventCoordinates(ev: MouseEvent | TouchEvent): [number, number] {
-			if (ev instanceof MouseEvent) {
-				return [ev.clientX, ev.clientY];
-			} else {
-				const touch = ev.touches[0];
-				return [touch.clientX, touch.clientY];
-			}
-		}
-
-		function startResize(ev: MouseEvent | TouchEvent, handle: ResizeHandle) {
-			pane.isResizing = true;
-			currentHandle = handle;
-
-			[startX, startY] = getEventCoordinates(ev);
-
-			const rect = element.getBoundingClientRect();
-			startWidth = rect.width;
-			startHeight = rect.height;
-
-			// Get the actual current position from the DOM if pane.position is not set
-			// This handles the case where the pane hasn't been dragged yet
-			if (pane.position === undefined && pane.portalTargetRef) {
-				const portalRect = pane.portalTargetRef.getBoundingClientRect();
-				startDragX = rect.left - portalRect.left;
-				startDragY = rect.top - portalRect.top;
-			} else {
-				const pos = pane.position ?? { x: 0, y: 0 };
-				startDragX = pos.x;
-				startDragY = pos.y;
-			}
-
-			document.addEventListener('mousemove', handleMouseMove);
-			document.addEventListener('mouseup', handleMouseUp);
-			document.addEventListener('touchmove', handleTouchMove);
-			document.addEventListener('touchend', handleMouseUp);
-			document.body.style.cursor = cursors[handle];
-		}
-
-		function handleMouseMove(ev: MouseEvent) {
-			if (!pane.isResizing) return;
-			ev.preventDefault();
-			ev.stopPropagation();
-			processMove(ev.clientX, ev.clientY);
-		}
-
-		function handleTouchMove(ev: TouchEvent) {
-			if (!pane.isResizing) return;
-			ev.preventDefault();
-			ev.stopPropagation();
-			const touch = ev.touches[0];
-			processMove(touch.clientX, touch.clientY);
-		}
-
-		function processMove(clientX: number, clientY: number) {
-			const deltaX = clientX - startX;
-			const deltaY = clientY - startY;
-
-			const { width, height } = calculateNewDimensions(
-				currentHandle,
-				deltaX,
-				deltaY,
-				startWidth,
-				startHeight
-			);
-
-			// Get constraints from pane
-			// If no minWidth/minHeight is set, derive from content or use a sensible default
-			let minWidth = pane.minWidth;
-			let minHeight = pane.minHeight;
-
-			// If no explicit minimum is set, calculate based on content
-			if (minWidth === undefined) {
-				// Use at least 100px or the content width, whichever is larger; FIXME: Doesn't work very well
-				// minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
-				minWidth = 100;
-			}
-
-			if (minHeight === undefined) {
-				// Use handle height + some content space, or at least 100px
-				const handleHeight = pane.handleRef?.offsetHeight ?? 0;
-				const contentMinHeight = pane.contentRef?.scrollHeight ?? 0;
-				minHeight = Math.max(100, handleHeight + Math.min(contentMinHeight, 50));
-			}
-
-			let maxWidth = pane.maxWidth;
-			let maxHeight = pane.maxHeight;
-
-			// If constrainToPortal is enabled, calculate max size based on position and portal bounds
-			if (pane.constrainToPortal && pane.portalTargetRef) {
-				const startPos = { x: startDragX, y: startDragY };
-
-				// For right/bottom edges: available space = portal size - start position
-				// For left/top edges: available space = start position + start size
-				// (because growing left/top means moving position toward 0)
-
-				let availableWidth: number;
-				let availableHeight: number;
-
-				if (currentHandle.includes('w')) {
-					// Resizing from left: can't go past x=0
-					availableWidth = startPos.x + startWidth;
-				} else {
-					// Resizing from right: can't go past portal width
-					availableWidth = pane.portalTargetRef.clientWidth - startPos.x;
-				}
-
-				if (currentHandle.includes('n')) {
-					// Resizing from top: can't go past y=0
-					availableHeight = startPos.y + startHeight;
-				} else {
-					// Resizing from bottom: can't go past portal height
-					availableHeight = pane.portalTargetRef.clientHeight - startPos.y;
-				}
-
-				// Apply both portal bounds and any explicitly set maxWidth/maxHeight
-				maxWidth = maxWidth !== undefined ? Math.min(maxWidth, availableWidth) : availableWidth;
-				maxHeight =
-					maxHeight !== undefined ? Math.min(maxHeight, availableHeight) : availableHeight;
-			}
-
-			const constraintOptions = {
-				minWidth,
-				minHeight,
-				maxWidth,
-				maxHeight
-			};
-
-			const { width: constrainedWidth, height: constrainedHeight } = applyConstraints(
-				width,
-				height,
-				constraintOptions
-			);
-
-			const actualWidthChange = constrainedWidth - startWidth;
-			const actualHeightChange = constrainedHeight - startHeight;
-
-			element.style.setProperty('width', constrainedWidth + 'px');
-			element.style.setProperty('height', constrainedHeight + 'px');
-
-			pane.size = { width: constrainedWidth, height: constrainedHeight };
-
-			// Always update position to ensure it's set, even for right/bottom resizing
-			if (currentHandle.includes('w') || currentHandle.includes('n')) {
-				// For left/top resizing, we need to adjust position
-				const { x, y } = calculatePositionAdjustment(
-					currentHandle,
-					startDragX,
-					startDragY,
-					actualWidthChange,
-					actualHeightChange
-				);
-				pane.position = { x, y };
-			} else {
-				// For right/bottom resizing, position stays the same but we need to ensure it's set
-				pane.position = { x: startDragX, y: startDragY };
-			}
-		}
-
-		function handleMouseUp(ev: Event) {
-			ev.preventDefault();
-			pane.isResizing = false;
-			document.removeEventListener('mousemove', handleMouseMove);
-			document.removeEventListener('mouseup', handleMouseUp);
-			document.removeEventListener('touchmove', handleTouchMove);
-			document.removeEventListener('touchend', handleMouseUp);
-			document.body.style.cursor = '';
-		}
-
 		return () => {
 			handleElements.forEach((handle) => handle.remove());
 		};
 	};
+}
+
+function startResize(
+	element: HTMLElement,
+	pane: PaneState,
+	ev: MouseEvent | TouchEvent,
+	handle: ResizeHandle
+) {
+	const [startX, startY] = getEventCoordinates(ev);
+	const rect = element.getBoundingClientRect();
+	const startWidth = rect.width;
+	const startHeight = rect.height;
+
+	// Get the actual current position from the DOM if pane.position is not set
+	// This handles the case where the pane hasn't been dragged yet
+	const startDragX = (() => {
+		if (pane.position === undefined && pane.portalTargetRef) {
+			const portalRect = pane.portalTargetRef.getBoundingClientRect();
+			return rect.left - portalRect.left;
+		}
+		return pane.position?.x ?? 0;
+	})();
+
+	const startDragY = (() => {
+		if (pane.position === undefined && pane.portalTargetRef) {
+			const portalRect = pane.portalTargetRef.getBoundingClientRect();
+			return rect.top - portalRect.top;
+		}
+		return pane.position?.y ?? 0;
+	})();
+
+	pane.isResizing = true;
+
+	function handleMouseMove(ev: MouseEvent) {
+		if (!pane.isResizing) return;
+		ev.preventDefault();
+		ev.stopPropagation();
+		processMove(ev.clientX, ev.clientY);
+	}
+
+	function handleTouchMove(ev: TouchEvent) {
+		if (!pane.isResizing) return;
+		ev.preventDefault();
+		ev.stopPropagation();
+		const touch = ev.touches[0];
+		processMove(touch.clientX, touch.clientY);
+	}
+
+	function processMove(clientX: number, clientY: number) {
+		const deltaX = clientX - startX;
+		const deltaY = clientY - startY;
+
+		const { width, height } = calculateNewSize(handle, deltaX, deltaY, startWidth, startHeight);
+
+		// Get constraints from pane
+		// If no minWidth/minHeight is set, derive from content or use a sensible default
+		let minWidth = pane.minWidth;
+		let minHeight = pane.minHeight;
+
+		// If no explicit minimum is set, calculate based on content
+		if (minWidth === undefined) {
+			// Use at least 100px or the content width, whichever is larger; FIXME: Doesn't work very well
+			// reason it doesn't work very well is that this only triggers after a resize, it does actually work, we just don't trigger a resize immediately (yet).
+			// FIXME: for some reason the calculation is wrong and resizing towards left is slower???
+
+			// minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
+			minWidth = 100;
+		}
+
+		if (minHeight === undefined) {
+			// Use handle height + some content space, or at least 100px
+			const handleHeight = pane.handleRef?.offsetHeight ?? 0;
+			const contentMinHeight = pane.contentRef?.scrollHeight ?? 0;
+			minHeight = Math.max(100, handleHeight + Math.min(contentMinHeight, 50));
+		}
+
+		let maxWidth = pane.maxWidth;
+		let maxHeight = pane.maxHeight;
+
+		// If constrainToPortal is enabled, calculate max size based on position and portal bounds
+		if (pane.constrainToPortal && pane.portalTargetRef) {
+			const startPos = { x: startDragX, y: startDragY };
+
+			// For right/bottom edges: available space = portal size - start position
+			// For left/top edges: available space = start position + start size
+			// (because growing left/top means moving position toward 0)
+
+			let availableWidth: number;
+			let availableHeight: number;
+
+			if (handle.includes('w')) {
+				// Resizing from left: can't go past x=0
+				availableWidth = startPos.x + startWidth;
+			} else {
+				// Resizing from right: can't go past portal width
+				availableWidth = pane.portalTargetRef.clientWidth - startPos.x;
+			}
+
+			if (handle.includes('n')) {
+				// Resizing from top: can't go past y=0
+				availableHeight = startPos.y + startHeight;
+			} else {
+				// Resizing from bottom: can't go past portal height
+				availableHeight = pane.portalTargetRef.clientHeight - startPos.y;
+			}
+
+			// Apply both portal bounds and any explicitly set maxWidth/maxHeight
+			maxWidth = maxWidth !== undefined ? Math.min(maxWidth, availableWidth) : availableWidth;
+			maxHeight = maxHeight !== undefined ? Math.min(maxHeight, availableHeight) : availableHeight;
+		}
+
+		const constraintOptions = {
+			minWidth,
+			minHeight,
+			maxWidth,
+			maxHeight
+		};
+
+		const { width: constrainedWidth, height: constrainedHeight } = applyConstraints(
+			width,
+			height,
+			constraintOptions
+		);
+
+		const actualWidthChange = constrainedWidth - startWidth;
+		const actualHeightChange = constrainedHeight - startHeight;
+
+		element.style.setProperty('width', constrainedWidth + 'px');
+		element.style.setProperty('height', constrainedHeight + 'px');
+
+		pane.size = { width: constrainedWidth, height: constrainedHeight };
+
+		// Always update position to ensure it's set, even for right/bottom resizing
+		if (handle.includes('w') || handle.includes('n')) {
+			// For left/top resizing, we need to adjust position
+			const { x, y } = calculatePositionAdjustment(
+				handle,
+				startDragX,
+				startDragY,
+				actualWidthChange,
+				actualHeightChange
+			);
+			pane.position = { x, y };
+		} else {
+			// For right/bottom resizing, position stays the same but we need to ensure it's set
+			pane.position = { x: startDragX, y: startDragY };
+		}
+	}
+
+	function handleMouseUp(ev: Event) {
+		ev.preventDefault();
+		pane.isResizing = false;
+		cleanup();
+	}
+
+	function cleanup() {
+		document.removeEventListener('mousemove', handleMouseMove);
+		document.removeEventListener('mouseup', handleMouseUp);
+		document.removeEventListener('touchmove', handleTouchMove);
+		document.removeEventListener('touchend', handleMouseUp);
+		document.body.style.cursor = '';
+	}
+
+	document.addEventListener('mousemove', handleMouseMove);
+	document.addEventListener('mouseup', handleMouseUp);
+	document.addEventListener('touchmove', handleTouchMove);
+	document.addEventListener('touchend', handleMouseUp);
+	document.body.style.cursor = cursors[handle];
 }
 
 export { resize };
