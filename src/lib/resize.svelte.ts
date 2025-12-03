@@ -82,7 +82,7 @@ function applyConstraints(
 	};
 }
 
-function calculateNewSize(
+function calculateNewDimensions(
 	handle: ResizeHandle,
 	deltaX: number,
 	deltaY: number,
@@ -199,6 +199,13 @@ function startResize(
 		return pane.position?.y ?? 0;
 	})();
 
+	const minWidth = pane.minWidth ?? Math.max(100, pane.contentRef?.scrollWidth ?? 100);
+	const minHeight = (() => {
+		if (pane.minHeight !== undefined) return pane.minHeight;
+		const handleHeight = pane.handleRef?.offsetHeight ?? 0;
+		return Math.max(100, handleHeight + 50);
+	})();
+
 	pane.isResizing = true;
 
 	function handleMouseMove(ev: MouseEvent) {
@@ -220,29 +227,13 @@ function startResize(
 		const deltaX = clientX - startX;
 		const deltaY = clientY - startY;
 
-		const { width, height } = calculateNewSize(handle, deltaX, deltaY, startWidth, startHeight);
-
-		// Get constraints from pane
-		// If no minWidth/minHeight is set, derive from content or use a sensible default
-		let minWidth = pane.minWidth;
-		let minHeight = pane.minHeight;
-
-		// If no explicit minimum is set, calculate based on content
-		if (minWidth === undefined) {
-			// Use at least 100px or the content width, whichever is larger; FIXME: Doesn't work very well
-			// reason it doesn't work very well is that this only triggers after a resize, it does actually work, we just don't trigger a resize immediately (yet).
-			// FIXME: for some reason the calculation is wrong and resizing towards left is slower???
-
-			// minWidth = Math.max(100, pane.contentRef?.scrollWidth ?? 100);
-			minWidth = 100;
-		}
-
-		if (minHeight === undefined) {
-			// Use handle height + some content space, or at least 100px
-			const handleHeight = pane.handleRef?.offsetHeight ?? 0;
-			const contentMinHeight = pane.contentRef?.scrollHeight ?? 0;
-			minHeight = Math.max(100, handleHeight + Math.min(contentMinHeight, 50));
-		}
+		const { width, height } = calculateNewDimensions(
+			handle,
+			deltaX,
+			deltaY,
+			startWidth,
+			startHeight
+		);
 
 		let maxWidth = pane.maxWidth;
 		let maxHeight = pane.maxHeight;
